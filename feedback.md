@@ -52,7 +52,7 @@ Some patterns appear to match by coincidence due to null-byte alignment (`__pyca
 
 **Raw bytes confirm the issue:** every ASCII character is followed by a `\x00` byte (e.g., `b'_\x00_\x00p\x00y\x00c\x00...'`), with no BOM prefix.
 
-**Doer:** fixed in commit below — re-encoded `.gitignore` as UTF-8. `git check-ignore -v "CLAUDE.md"` and `git check-ignore -v "__pycache__/"` both match correctly after the fix.
+**Doer:** fixed in commit `ea54926` — re-encoded `.gitignore` as UTF-8. `git check-ignore -v "CLAUDE.md"` and `git check-ignore -v "__pycache__/"` both match correctly after the fix.
 
 **Required fix:** Re-encode `.gitignore` as UTF-8. The content is correct when decoded — the 8 patterns match what PLAN.md specifies:
 
