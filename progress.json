@@ -1,0 +1,169 @@
+{
+  "sprint": "TUI Calculator",
+  "branch": "feat/tui-calculator",
+  "phases": [
+    {
+      "id": "phase-1",
+      "name": "Project Scaffolding",
+      "tasks": [
+        {
+          "id": "1.1",
+          "name": "Create pyproject.toml with textual dep, hatchling build, dev extras, tui-calc entry point",
+          "status": "completed",
+          "notes": "pyproject.toml created with textual>=0.80, hatchling build, tui-calc entry point, dev extras (pytest, pytest-asyncio, textual-dev)"
+        },
+        {
+          "id": "1.2",
+          "name": "Create .gitignore, README.md placeholder, src/tui_calc/__init__.py, stub app.py, tests/__init__.py",
+          "status": "pending",
+          "notes": ""
+        },
+        {
+          "id": "1.3",
+          "name": "VERIFY: pip install -e '.[dev]' succeeds, pytest exits with 0 tests, tui-calc launches blank app",
+          "type": "verify",
+          "status": "pending",
+          "notes": ""
+        }
+      ]
+    },
+    {
+      "id": "phase-2",
+      "name": "Safe Expression Evaluator",
+      "tasks": [
+        {
+          "id": "2.1",
+          "name": "Implement calculator.py: exceptions, ALLOWED_NODES whitelist, _validate_node, _eval_node, safe_eval, format_result",
+          "status": "pending",
+          "notes": ""
+        },
+        {
+          "id": "2.2",
+          "name": "Implement tests/test_calculator.py: basic arithmetic, precedence, exponents, unary, floating point, division by zero, invalid input, security, format_result",
+          "status": "pending",
+          "notes": ""
+        },
+        {
+          "id": "2.3",
+          "name": "VERIFY: pytest tests/test_calculator.py -v all green, non-whitelisted AST raises InvalidExpression, 2**10000 raises error",
+          "type": "verify",
+          "status": "pending",
+          "notes": ""
+        }
+      ]
+    },
+    {
+      "id": "phase-3",
+      "name": "History Store",
+      "tasks": [
+        {
+          "id": "3.1",
+          "name": "Implement history.py: HistoryEntry dataclass, HistoryStore with deque, add/entries/clear/__len__/__bool__",
+          "status": "pending",
+          "notes": ""
+        },
+        {
+          "id": "3.2",
+          "name": "Implement tests/test_history.py: add_entry, newest_first, max_length, clear, empty_store, timestamp_set",
+          "status": "pending",
+          "notes": ""
+        },
+        {
+          "id": "3.3",
+          "name": "VERIFY: pytest tests/test_history.py -v all green, maxlen=3 with 100 additions never exceeds 3",
+          "type": "verify",
+          "status": "pending",
+          "notes": ""
+        }
+      ]
+    },
+    {
+      "id": "phase-4",
+      "name": "Textual Widgets",
+      "tasks": [
+        {
+          "id": "4.1",
+          "name": "Implement widgets.py: Display, ButtonGrid (5x4 grid with ButtonPressed message), HistoryPanel",
+          "status": "pending",
+          "notes": ""
+        },
+        {
+          "id": "4.2",
+          "name": "Implement styles.tcss: Screen, display, button grid (4 cols), button categories, history panel",
+          "status": "pending",
+          "notes": ""
+        },
+        {
+          "id": "4.3",
+          "name": "VERIFY: import widgets works, CSS loads without errors, visual inspection of layout",
+          "type": "verify",
+          "status": "pending",
+          "notes": ""
+        }
+      ]
+    },
+    {
+      "id": "phase-5",
+      "name": "App Wiring",
+      "tasks": [
+        {
+          "id": "5.1",
+          "name": "Wire CalculatorApp: compose widget tree, on_button_pressed routing, keyboard on_key handling, _evaluate with safe_eval",
+          "status": "pending",
+          "notes": ""
+        },
+        {
+          "id": "5.2",
+          "name": "VERIFY: tui-calc launches full calculator, buttons+keyboard work, C/CE/h/q/Escape work, division by zero shows error",
+          "type": "verify",
+          "status": "pending",
+          "notes": ""
+        }
+      ]
+    },
+    {
+      "id": "phase-6",
+      "name": "Integration Tests",
+      "tasks": [
+        {
+          "id": "6.1",
+          "name": "Implement tests/test_app.py: all 13 pilot-based async tests, add asyncio_mode=auto to pyproject.toml",
+          "status": "pending",
+          "notes": ""
+        },
+        {
+          "id": "6.2",
+          "name": "VERIFY: pytest tests/ -v passes all unit + integration tests, no sleep hacks",
+          "type": "verify",
+          "status": "pending",
+          "notes": ""
+        }
+      ]
+    },
+    {
+      "id": "phase-7",
+      "name": "Polish and Documentation",
+      "tasks": [
+        {
+          "id": "7.1",
+          "name": "Complete README.md: install, usage, keyboard shortcuts, button layout, dev commands",
+          "status": "pending",
+          "notes": ""
+        },
+        {
+          "id": "7.2",
+          "name": "Update __init__.py exports, review pass (no func >50 lines, no eval/exec), final pytest run",
+          "status": "pending",
+          "notes": ""
+        },
+        {
+          "id": "7.3",
+          "name": "VERIFY: clean venv pip install + pytest, tui-calc runs, README complete, no eval/exec in codebase",
+          "type": "verify",
+          "status": "pending",
+          "notes": ""
+        }
+      ]
+    }
+  ]
+}
