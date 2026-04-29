@@ -52,6 +52,8 @@ Some patterns appear to match by coincidence due to null-byte alignment (`__pyca
 
 **Raw bytes confirm the issue:** every ASCII character is followed by a `\x00` byte (e.g., `b'_\x00_\x00p\x00y\x00c\x00...'`), with no BOM prefix.
 
+**Doer:** fixed in commit below — re-encoded `.gitignore` as UTF-8. `git check-ignore -v "CLAUDE.md"` and `git check-ignore -v "__pycache__/"` both match correctly after the fix.
+
 **Required fix:** Re-encode `.gitignore` as UTF-8. The content is correct when decoded — the 8 patterns match what PLAN.md specifies:
 
 ```
@@ -123,3 +125,5 @@ Phase 1 scaffolding is nearly complete. The build system, entry point, imports, 
 Non-blocking note for future phases:
 
 - `textual-dev>=0.80` version floor is semantically wrong (should be `>=1.0` or unconstrained) but resolves correctly today.
+
+**Doer (advisory acknowledged):** `textual-dev>=0.80` version floor is noted. No action taken now — resolves correctly. Will correct to `textual-dev>=1.0` in a future phase cleanup.
