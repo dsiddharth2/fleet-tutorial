@@ -1,133 +1,125 @@
-# TUI Calculator — Plan Review
+# TUI Calculator — Code Review (Phase 1)
 
 **Reviewer:** lf-reviewer  
-**Date:** 2026-04-29  
-**Verdict:** APPROVED
+**Date:** 2026-04-29 18:15:00+05:30  
+**Verdict:** CHANGES NEEDED
 
 > See the recent git history of this file to understand the context of this review.
 
 ---
 
-## 1. Done Criteria — PASS
+## 1. Build & Install — PASS
 
-Every phase has explicit acceptance criteria that are testable and objective. Phase 1 specifies `pip install` and `pytest` exit conditions. Phase 2 lists specific test cases and a security invariant (non-whitelisted nodes raise `InvalidExpression`). Phase 3 defines a deque overflow invariant. Phase 5 enumerates specific user-facing behaviors (button clicks, keyboard input, error display). Phase 6 lists 13 named integration test scenarios. No phase leaves the implementer guessing when "done" is.
+`pip install -e ".[dev]"` succeeds. The editable install produces `tui-calc==0.1.0` with all dependencies resolved:
 
----
+- `textual==8.2.4` (satisfies `>=0.80`)
+- `pytest==8.4.2` (satisfies `>=7.0`)
+- `pytest-asyncio==1.3.0` (satisfies `>=0.21`)
+- `textual-dev==1.8.0` (satisfies `>=0.80` — see note in section 5)
 
-## 2. Cohesion and Coupling — PASS
-
-Each phase has a single clear responsibility. Phase 2 (calculator) and Phase 3 (history) are pure logic with zero TUI dependencies — they can be developed and tested in isolation. Phase 4 (widgets) is purely presentational. Phase 5 is the integration point, which is the right place for coupling. The only cross-phase data contract is `HistoryEntry`, which is a frozen dataclass — minimal surface area. The plan correctly identifies Phases 2 and 3 as parallelizable.
-
----
-
-## 3. Shared Interfaces in Earliest Tasks — PASS
-
-Phase 2 establishes the core abstractions: `safe_eval()`, `format_result()`, and the `CalculatorError` exception hierarchy. Phase 3 establishes `HistoryEntry` and `HistoryStore`. These are the interfaces consumed by every later phase. Phases 4, 5, and 6 build on top of them without introducing new foundational types.
+The hatchling build backend correctly finds `src/tui_calc` via the `[tool.hatch.build.targets.wheel]` packages directive.
 
 ---
 
-## 4. Riskiest Assumption Validated Early — PASS with NOTE
+## 2. Test Suite — PASS
 
-The riskiest technical assumption is that an AST-whitelist approach can safely evaluate arbitrary user expressions without `eval()`. This is validated in Phase 2 with explicit security test cases (`__import__`, `(1).__class__`, `True+1`). Phase 1 validates the next riskiest assumption — that `textual` installs and launches on the target platform.
-
-**NOTE:** Phase 1 could be strengthened by verifying that Textual renders a basic widget (e.g., a `Static` with text), not just a blank app. This would catch display/terminal compatibility issues one phase earlier. This is a minor suggestion, not a blocker.
+`python -m pytest tests/ -v` exits with 0 items collected and exit code 5 (no tests found). This matches the Phase 1 acceptance criterion of "pytest exits with 0 tests collected." The test infrastructure is correctly wired — pytest discovers the `tests/` directory and `tests/__init__.py` exists.
 
 ---
 
-## 5. Later Tasks Reuse Early Abstractions (DRY) — PASS
+## 3. Entry Point & Imports — PASS
 
-Phase 5 consumes `safe_eval`, `format_result`, `CalculatorError` (from Phase 2) and `HistoryStore` (from Phase 3). Phase 4's `HistoryPanel` consumes `HistoryEntry` from Phase 3. Phase 6 reuses the full `CalculatorApp` via Textual's `run_test()` pilot. No logic is duplicated across phases.
+- `tui-calc` entry point is registered correctly at `tui_calc.app:main`.
+- `from tui_calc.app import CalculatorApp, main` succeeds.
+- `CalculatorApp` correctly subclasses `textual.app.App`.
+- `from tui_calc import __version__` returns `"0.1.0"`, consistent with `pyproject.toml`.
+- `app.py` is a clean stub: `CalculatorApp(App)` with `pass` body and `main()` that calls `run()`.
+- No `eval()` or `exec()` anywhere in the codebase.
 
----
-
-## 6. Verify Checkpoints — PASS with NOTE
-
-Each phase ends with acceptance criteria that function as verify gates. Phases 2 and 3 include their own unit tests, which is strong. Phase 6 is a dedicated integration-test phase covering the assembled application.
-
-**NOTE:** The plan does not include explicit VERIFY checkpoint phases (e.g., "VERIFY: run all tests, confirm green"). The per-phase acceptance criteria serve this purpose implicitly, but an implementer could skip verification until Phase 6. Consider adding a brief "run `pytest tests/ -v` — must be green" checkpoint after Phase 3 completes (before starting widget work) to catch regressions early. Phase 4's acceptance criteria are the weakest of all phases — "importing doesn't error" and visual inspection — consider adding a minimal smoke test (e.g., instantiate each widget in a test to verify `compose()` doesn't raise).
-
----
-
-## 7. Each Task Completable in One Session — PASS
-
-Phase 1 (scaffolding) is ~30 minutes. Phase 2 (calculator + tests) is the largest at roughly 1-2 hours but is well-scoped with clear test cases. Phase 3 is small (~30 min). Phase 4 (widgets + CSS) is moderate. Phases 5-7 are each one-session tasks. No phase requires context that would be lost across sessions.
+NOTE: The entry point script `tui-calc.exe` installs to a directory not on PATH. This is an environment issue, not a code issue — the entry point registration itself is correct.
 
 ---
 
-## 8. Dependencies Satisfied in Order — PASS
+## 4. .gitignore Encoding — FAIL
 
-The dependency graph is correct and explicitly documented:
-- Phase 1 is a prerequisite for all others (project structure)
-- Phases 2 and 3 are independent and parallelizable
-- Phase 4 depends on Phase 3 (for `HistoryEntry`) — correct
-- Phase 5 depends on 2 + 3 + 4 — correct
-- Phases 6 and 7 are sequential after 5
+**The `.gitignore` file is UTF-16 LE without BOM.** Git treats it as a binary file (`git diff` reports "Binary files differ"). This causes pattern-matching failures:
 
-No phase references artifacts from a later phase.
+- `git check-ignore -v "*.pyc"` → **no match** (exit code 1)
+- `git check-ignore -v "CLAUDE.md"` → **no match** (exit code 1)
+- `CLAUDE.md` appears as untracked in `git status`, confirming the ignore pattern is broken
 
----
+Some patterns appear to match by coincidence due to null-byte alignment (`__pycache__/`, `.venv/`, `dist/`), but this is unreliable.
 
-## 9. Vague Tasks — PASS with NOTE
+**Raw bytes confirm the issue:** every ASCII character is followed by a `\x00` byte (e.g., `b'_\x00_\x00p\x00y\x00c\x00...'`), with no BOM prefix.
 
-The plan is unusually specific — function signatures, AST node lists, button layouts, CSS selectors, and test case tables are all spelled out.
+**Required fix:** Re-encode `.gitignore` as UTF-8. The content is correct when decoded — the 8 patterns match what PLAN.md specifies:
 
-**NOTE:** Two minor areas of ambiguity:
-1. Phase 5's "user-friendly error messages" — the plan doesn't specify the exact error text. Two developers might show "Error" vs. "Division by zero" vs. "Cannot divide by zero." Consider specifying the error message format (e.g., display the exception's string representation).
-2. Phase 4's visual verification ("Buttons arrange in 5-row x 4-column grid visually") — this is inherently subjective. The integration tests in Phase 6 partially address this by testing button functionality, but grid layout correctness remains a visual-only check.
+```
+__pycache__/
+*.pyc
+.venv/
+dist/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+CLAUDE.md
+```
 
----
-
-## 10. Hidden Dependencies — PASS
-
-Phase 6 modifies `pyproject.toml` to add `asyncio_mode = "auto"` — this is a cross-cutting change but is documented in the plan and has no impact on earlier phases. No other hidden dependencies detected. The only inter-phase data contracts are `HistoryEntry` (Phase 3 -> 4) and the calculator API (Phase 2 -> 5), both explicitly documented.
-
----
-
-## 11. Risk Register — PASS with NOTE
-
-The risk register covers 5 risks with concrete mitigations: AST whitelist completeness, runtime CSS errors, keyboard binding conflicts, exponent hang, and floating-point noise. All are real risks with actionable mitigations.
-
-**NOTE — missing risks to consider:**
-- **Windows terminal compatibility:** The project runs on Windows 11 (per the working environment). Textual's Windows terminal support has historically lagged behind Unix. Consider adding a risk: "Textual rendering issues on Windows Terminal / ConPTY" with mitigation "test on Windows Terminal early in Phase 1."
-- **Long input strings:** No cap on expression length. A user pasting a 100KB expression could cause performance issues in AST parsing. Mitigation: add a max expression length (e.g., 1000 chars) in `safe_eval`.
-- **Textual version pinning:** The plan pins `textual >= 0.80` but Textual's API changes frequently across minor versions. Consider pinning to a specific version (e.g., `textual ~= 0.80`) to avoid surprise breakage.
-
-None of these are blockers, but documenting them would strengthen the plan.
+The commit message for task 1.2 says "fixed encoding" but the file is still UTF-16 LE.
 
 ---
 
-## 12. Alignment with Requirements — PASS
+## 5. Factual References — PASS with NOTE
 
-All 7 functional requirements from `requirements.md` map directly to plan phases:
+**pyproject.toml** — all package names, build backend, and entry point syntax are correct.
 
-| Requirement | Covered In |
-|-------------|-----------|
-| Safe Expression Evaluation | Phase 2 — AST whitelist, no eval(), security tests |
-| Button Grid (5x4) | Phase 4 — explicit layout constant |
-| Keyboard Input | Phase 5 — key-to-button mapping table |
-| Expression Display | Phase 4 — Display widget with expression + result |
-| Calculation History (h toggle, 50-cap) | Phases 3 + 4 — HistoryStore(maxlen=50) + HistoryPanel |
-| Result Chaining | Phase 5 — `_last_result` logic documented |
-| Error Handling | Phase 2 (exceptions) + Phase 5 (display) |
+**NOTE:** The dev dependency `textual-dev>=0.80` uses a version floor borrowed from `textual`. The `textual-dev` package has never published a version 0.80 — its versions are in the 1.x range. This constraint resolves correctly today (since `1.8.0 >= 0.80` is true) but is semantically misleading. A more accurate constraint would be `textual-dev>=1.0` or simply `textual-dev`. This is not blocking — pip resolves it fine — but it should be corrected in a future phase.
 
-All 4 non-functional requirements (Python >= 3.10, textual >= 0.80, pytest + pilot, pyproject.toml + hatchling) are addressed. The 4 success criteria from requirements.md are a subset of the plan's success checklist.
+**README.md** — links to `https://github.com/Textualize/textual`, which is the correct repository. Content is a placeholder as specified by the plan.
 
-The plan solves the right problem and doesn't gold-plate beyond what the requirements ask for.
+---
+
+## 6. Project Structure — PASS
+
+All files specified in PLAN.md Phase 1 are present:
+
+| File | Status |
+|------|--------|
+| `pyproject.toml` | ✓ Present, correct |
+| `.gitignore` | ✓ Present, **encoding broken** (see section 4) |
+| `README.md` | ✓ Present, placeholder |
+| `src/tui_calc/__init__.py` | ✓ `__version__ = "0.1.0"` |
+| `src/tui_calc/app.py` | ✓ `CalculatorApp(App)` stub + `main()` |
+| `tests/__init__.py` | ✓ Empty |
+
+No extra files beyond what was planned.
+
+---
+
+## 7. Alignment with PLAN.md Acceptance Criteria
+
+| Criterion | Result |
+|-----------|--------|
+| `pip install -e ".[dev]"` succeeds | **PASS** |
+| `pytest` exits with "0 tests collected" | **PASS** (exit code 5, 0 items) |
+| `tui-calc` launches blank Textual app | **PASS** (import chain verified; headless launch not testable but entry point registered correctly) |
+
+---
+
+## 8. Prior Review Context
+
+The plan review (commit `4767c03`) was APPROVED with notes. The Phase 1 plan review noted that Phase 1 could be strengthened by verifying widget rendering, not just a blank app — the implementer kept the stub as `pass` which is exactly what the plan specified. The plan review also flagged Windows terminal compatibility as a risk — this is not yet tested but is appropriate for later phases.
 
 ---
 
 ## Summary
 
-**Verdict: APPROVED**
+**Verdict: CHANGES NEEDED**
 
-The plan is well-structured, specific, and aligned with the requirements. It establishes clean abstractions early (Phases 2-3), builds on them without duplication (Phases 4-5), and validates the result with comprehensive tests (Phase 6). Dependencies are correctly ordered and documented.
+Phase 1 scaffolding is nearly complete. The build system, entry point, imports, test infrastructure, and project structure all work correctly. One blocking issue must be fixed:
 
-**What passed cleanly (8 of 12):** Done criteria, cohesion/coupling, shared interfaces early, DRY reuse, one-session tasks, dependency order, no hidden dependencies, requirements alignment.
+1. **BLOCKING — `.gitignore` encoding:** File is UTF-16 LE without BOM. Git cannot parse it, causing `*.pyc` and `CLAUDE.md` ignore patterns to silently fail. Must be re-encoded as UTF-8.
 
-**What passed with notes (4 of 12):**
-- *Risk validation in Phase 1* — could verify widget rendering, not just blank app launch.
-- *Verify checkpoints* — acceptance criteria exist per-phase, but no explicit mid-plan verification gate. Phase 4's acceptance criteria are weak.
-- *Vague tasks* — error message format and visual grid verification are slightly ambiguous.
-- *Risk register* — exists and is solid, but should add Windows terminal compatibility, input length caps, and version pinning risks.
+Non-blocking note for future phases:
 
-**No items require changes before implementation can begin.** The notes above are suggestions for strengthening the plan that can be addressed during implementation.
+- `textual-dev>=0.80` version floor is semantically wrong (should be `>=1.0` or unconstrained) but resolves correctly today.
