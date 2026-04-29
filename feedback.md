@@ -1,8 +1,8 @@
 # TUI Calculator — Code Review (Phase 1)
 
 **Reviewer:** lf-reviewer  
-**Date:** 2026-04-29 18:15:00+05:30  
-**Verdict:** CHANGES NEEDED
+**Date:** 2026-04-29 18:45:00+05:30  
+**Verdict:** APPROVED
 
 > See the recent git history of this file to understand the context of this review.
 
@@ -40,34 +40,22 @@ NOTE: The entry point script `tui-calc.exe` installs to a directory not on PATH.
 
 ---
 
-## 4. .gitignore Encoding — FAIL
+## 4. .gitignore Encoding — PASS (fixed)
 
-**The `.gitignore` file is UTF-16 LE without BOM.** Git treats it as a binary file (`git diff` reports "Binary files differ"). This causes pattern-matching failures:
+**Previously FAIL.** The `.gitignore` was UTF-16 LE without BOM, causing git to treat it as binary and silently breaking `*.pyc` and `CLAUDE.md` patterns.
 
-- `git check-ignore -v "*.pyc"` → **no match** (exit code 1)
-- `git check-ignore -v "CLAUDE.md"` → **no match** (exit code 1)
-- `CLAUDE.md` appears as untracked in `git status`, confirming the ignore pattern is broken
+**Doer:** fixed in commit `ea54926` — re-encoded `.gitignore` as UTF-8.
 
-Some patterns appear to match by coincidence due to null-byte alignment (`__pycache__/`, `.venv/`, `dist/`), but this is unreliable.
+**Re-review verification:**
 
-**Raw bytes confirm the issue:** every ASCII character is followed by a `\x00` byte (e.g., `b'_\x00_\x00p\x00y\x00c\x00...'`), with no BOM prefix.
+- File is now 90 bytes of clean UTF-8 (was 164 bytes of UTF-16 LE)
+- `git check-ignore -v "*.pyc"` → `.gitignore:2:*.pyc` — **matches**
+- `git check-ignore -v "CLAUDE.md"` → `.gitignore:8:CLAUDE.md` — **matches**
+- `git check-ignore -v "__pycache__/"` → `.gitignore:1:__pycache__/` — **matches**
+- `git check-ignore -v ".venv/"` → `.gitignore:3:.venv/` — **matches**
+- `git check-ignore -v "foo.egg-info/"` → `.gitignore:5:*.egg-info/` — **matches**
 
-**Doer:** fixed in commit `ea54926` — re-encoded `.gitignore` as UTF-8. `git check-ignore -v "CLAUDE.md"` and `git check-ignore -v "__pycache__/"` both match correctly after the fix.
-
-**Required fix:** Re-encode `.gitignore` as UTF-8. The content is correct when decoded — the 8 patterns match what PLAN.md specifies:
-
-```
-__pycache__/
-*.pyc
-.venv/
-dist/
-*.egg-info/
-.pytest_cache/
-.mypy_cache/
-CLAUDE.md
-```
-
-The commit message for task 1.2 says "fixed encoding" but the file is still UTF-16 LE.
+All 8 patterns are present and all tested patterns resolve correctly. Issue is resolved.
 
 ---
 
@@ -76,6 +64,8 @@ The commit message for task 1.2 says "fixed encoding" but the file is still UTF-
 **pyproject.toml** — all package names, build backend, and entry point syntax are correct.
 
 **NOTE:** The dev dependency `textual-dev>=0.80` uses a version floor borrowed from `textual`. The `textual-dev` package has never published a version 0.80 — its versions are in the 1.x range. This constraint resolves correctly today (since `1.8.0 >= 0.80` is true) but is semantically misleading. A more accurate constraint would be `textual-dev>=1.0` or simply `textual-dev`. This is not blocking — pip resolves it fine — but it should be corrected in a future phase.
+
+**Doer (advisory acknowledged):** `textual-dev>=0.80` version floor is noted. No action taken now — resolves correctly. Will correct to `textual-dev>=1.0` in a future phase cleanup.
 
 **README.md** — links to `https://github.com/Textualize/textual`, which is the correct repository. Content is a placeholder as specified by the plan.
 
@@ -88,7 +78,7 @@ All files specified in PLAN.md Phase 1 are present:
 | File | Status |
 |------|--------|
 | `pyproject.toml` | ✓ Present, correct |
-| `.gitignore` | ✓ Present, **encoding broken** (see section 4) |
+| `.gitignore` | ✓ Present, UTF-8 encoded, all patterns working |
 | `README.md` | ✓ Present, placeholder |
 | `src/tui_calc/__init__.py` | ✓ `__version__ = "0.1.0"` |
 | `src/tui_calc/app.py` | ✓ `CalculatorApp(App)` stub + `main()` |
@@ -110,20 +100,23 @@ No extra files beyond what was planned.
 
 ## 8. Prior Review Context
 
-The plan review (commit `4767c03`) was APPROVED with notes. The Phase 1 plan review noted that Phase 1 could be strengthened by verifying widget rendering, not just a blank app — the implementer kept the stub as `pass` which is exactly what the plan specified. The plan review also flagged Windows terminal compatibility as a risk — this is not yet tested but is appropriate for later phases.
+The plan review (commit `4767c03`) was APPROVED with notes. The initial Phase 1 code review (commit `a72772a`) found one blocking issue: `.gitignore` UTF-16 encoding. The doer fixed this in commit `ea54926` and annotated feedback.md with the fix reference. This re-review confirms the fix is correct and all previously passing checks remain green.
 
 ---
 
 ## Summary
 
-**Verdict: CHANGES NEEDED**
+**Verdict: APPROVED**
 
-Phase 1 scaffolding is nearly complete. The build system, entry point, imports, test infrastructure, and project structure all work correctly. One blocking issue must be fixed:
+Phase 1 scaffolding is complete. All acceptance criteria pass:
 
-1. **BLOCKING — `.gitignore` encoding:** File is UTF-16 LE without BOM. Git cannot parse it, causing `*.pyc` and `CLAUDE.md` ignore patterns to silently fail. Must be re-encoded as UTF-8.
+- `pip install -e ".[dev]"` installs cleanly with all dependencies resolved
+- `pytest tests/ -v` collects 0 items (expected — no tests yet)
+- Entry point registered, imports work, `CalculatorApp` subclasses `App`
+- `.gitignore` is now UTF-8 with all patterns working correctly (fixed in `ea54926`)
+- No `eval()` or `exec()` in codebase
+- Project structure matches PLAN.md exactly
 
-Non-blocking note for future phases:
+**Deferred (non-blocking):** `textual-dev>=0.80` version floor should be corrected to `>=1.0` in a future phase.
 
-- `textual-dev>=0.80` version floor is semantically wrong (should be `>=1.0` or unconstrained) but resolves correctly today.
-
-**Doer (advisory acknowledged):** `textual-dev>=0.80` version floor is noted. No action taken now — resolves correctly. Will correct to `textual-dev>=1.0` in a future phase cleanup.
+Phase 2 (Safe Expression Evaluator) and Phase 3 (History Store) can proceed in parallel.
